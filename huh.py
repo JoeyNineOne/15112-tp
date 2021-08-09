@@ -26,8 +26,8 @@ class Sphere(Bullet):
 def appStarted(app):
     app.width = 2560
     app.height = 1600
-    app.bg = app.loadImage("tp/bg1.png")
-    app.bf = app.loadImage("tp/bf1.jpg")
+    app.bg = app.loadImage("bg1.png")
+    app.bf = app.loadImage("bf1.jpg")
     app.spellcards = True
     app.bullets = []
     app.timerDelay = 1
