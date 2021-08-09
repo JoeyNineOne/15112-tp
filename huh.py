@@ -10,6 +10,7 @@ class Player():
         self.score = score
         self.bomb = bomb
         self.life = life
+
 class Bullet():
     def __init__(self, color, x, y, dx, dy):
         self.color = color
@@ -28,7 +29,7 @@ def appStarted(app):
     app.height = 1600
     app.bg = app.loadImage("bg1.png")
     app.bf = app.loadImage("bf1.jpg")
-    app.spellcards = True
+    app.spellcard = "Starfury!"
     app.bullets = []
     app.timerDelay = 1
     app.working = False
@@ -40,7 +41,23 @@ def appStarted(app):
     app.bomb = 3
     app.init = True
     app.player = Player(0,0,0,0,0,0)
-    
+    app.time = 0
+    app.gg = False
+
+
+def keyPressed(app, event):
+    if(not app.gg):
+        if (event.key == 'Up'):
+            app.player.y -= 5
+        elif (event.key == 'Down'): 
+            app.player.y += 5
+        elif (event.key == 'Left'):
+            app.player.x -= 5
+        elif (event.key == 'Right'):
+            app.player.x += 5
+        elif(event.key =="r"):
+            appStarted(app)
+
 def checkInBounds(app):
     bf_x0, bf_y0, bf_x1, bf_y1 = 40, 40, app.width/1.3-40, app.height-40
     bf_w, bf_h = bf_x1-bf_x0, bf_y1-bf_y0
@@ -53,22 +70,31 @@ def checkInBounds(app):
             else:
                 i += 1
 
-def timerFired(app):
-    if(app.init):
-        app.player = Player(app.width/2.6, app.height-60,5,0,3,5)
-        app.init = False
-    app.time+=1
-    checkInBounds(app)
-    if(app.time==1):
-        spellcard(app)
-    if(app.time==20):
-        spellcard_double(app)
+def circularCheckCollision(app):
+    p = app.player
     for sets in app.bullets:
         for b in sets:
-            b.x+=b.dx
-            b.y+=b.dy
+            if(((b.x-p.x)**2+(b.y-p.y)**2)**0.5<b.r+p.r):
+                app.gg = True
 
-def spellcard_help(app, sets, speed, color):
+def timerFired(app):
+    if(not app.gg):
+        app.time+=1
+        if(app.init):
+            app.player = Player(app.width/2.6, app.height-60,7,0,3,5)
+            app.init = False
+        checkInBounds(app)
+        circularCheckCollision(app)
+        if(app.time==10):
+            starfury(app)
+        # elif(app.time==20):
+        #     starfury_double(app)
+        for sets in app.bullets:
+            for b in sets:
+                b.x+=b.dx
+                b.y+=b.dy
+
+def starfury_help(app, sets, speed, color):
     bf_x0, bf_y0, bf_x1, bf_y1 = 40, 40, app.width/1.3-40, app.height-40
     bf_w, bf_h = bf_x1-bf_x0, bf_y1-bf_y0
     cx, cy, r= (bf_w)/2, (bf_h)/2, min(bf_w, bf_h)/3
@@ -81,18 +107,18 @@ def spellcard_help(app, sets, speed, color):
         dx = speed*math.cos(angle)
         dy = speed*math.sin(angle)
         sets.append(Sphere(color,x,y,dx,dy,7.5))
-def spellcard(app):
+def starfury(app):
     circle1 = []
     app.bullets.append(circle1)
-    spellcard_help(app, circle1, 5, "pink")
+    starfury_help(app, circle1, 5, "pink")
     circle2 = []
     app.bullets.append(circle2)
-    spellcard_help(app, circle2, 7.5, "cyan")
+    starfury_help(app, circle2, 7.5, "cyan")
     circle3 = []
     app.bullets.append(circle3)
-    spellcard_help(app, circle3, 10, "yellow")
+    starfury_help(app, circle3, 10, "yellow")
 
-def spellcard_double(app):
+def starfury_double(app):
     for i in range(2):
         for i in range(len(app.bullets)):
             sets = app.bullets[i]
@@ -138,13 +164,20 @@ def redraw_infoboard(app,canvas):
                             font = "Ariel 20 bold", anchor = "w") 
     canvas.create_text(ib_x0+30,ib_y0+80, text=f"Life = {app.life}",
                             font = "Ariel 20 bold", anchor = "w") 
+    canvas.create_text(ib_x0+30,ib_y0+110, text=f"Current Spellcard: {app.spellcard}",
+                            font = "Ariel 20 bold", anchor = "w") 
+    if(app.gg):
+        canvas.create_text(ib_x0+30,ib_y0+130, text=f"GAME OVER!!! :P",
+                            font = "Ariel 20 bold", anchor = "w") 
+
 def redraw_UI(app, canvas):
     redraw_background(app, canvas)
     redraw_battlefield(app, canvas)
     redraw_infoboard(app, canvas)
 def redraw_player(app, canvas):
     p = app.player
-    canvas.create_oval(p.x-p.r,p.y-p.r,p.x+p.r,p.y+p.r,fill="Purple")
+    canvas.create_oval(p.x-p.r,p.y-p.r,p.x+p.r,p.y+p.r,fill="Purple",
+                        outline = "white", width = 5)
 def redraw_bullets(app,canvas):
     for sets in app.bullets:
         for i in range(len(sets)):
