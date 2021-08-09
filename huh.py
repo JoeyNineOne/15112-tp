@@ -3,13 +3,10 @@
 from cmu_112_graphics import *
 import math, time
 class Player():
-    def __init__(self, x, y, r, score, bomb, life):
+    def __init__(self, x, y, r):
         self.x = x
         self.y = y
         self.r = r
-        self.score = score
-        self.bomb = bomb
-        self.life = life
 
 class Bullet():
     def __init__(self, color, dx, dy):
@@ -44,28 +41,29 @@ def appStarted(app):
     app.working = False
     app.time = 0
     app.doubleMode = False
-    app.time = 0
     app.score = 0
     app.life = 5
     app.bomb = 3
     app.init = True
-    app.player = Player(0,0,0,0,0,0)
-    app.time = 0
+    app.player = Player(0,0,0)
     app.gg = False
-
+    app.hasBomb = False
 
 def keyPressed(app, event):
     if(not app.gg):
         if (event.key == 'Up'):
-            app.player.y -= 5
+            app.player.y -= 15
         elif (event.key == 'Down'): 
-            app.player.y += 5
+            app.player.y += 15
         elif (event.key == 'Left'):
-            app.player.x -= 5
+            app.player.x -= 15
         elif (event.key == 'Right'):
-            app.player.x += 5
+            app.player.x += 15
         elif(event.key =="r"):
             appStarted(app)
+        elif(event.key=="f" and app.bomb>0):
+            app.hasBomb = True
+            app.bomb-=1
 
 def circleInBounds(app):
     bf_x0, bf_y0, bf_x1, bf_y1 = 40, 40, app.width/1.3-40, app.height-40
@@ -74,56 +72,132 @@ def circleInBounds(app):
     for sets in app.bullets:
         newSet = []
         for bullet in sets:
-            if ((bullet.x>40 and bullet.y>40 and bullet.x<40+bf_w
-            and bullet.y<40+bf_h)):
+            ((bullet.x-app.player.x)**2+(bullet.y-app.player.y)**2)**0.5
+            if (((bullet.x>40 and bullet.y>40 and bullet.x<40+bf_w
+            and bullet.y<40+bf_h))):
+                if(not app.hasBomb):
+                    newSet.append(bullet)
+                elif(app.hasBomb and ((bullet.x-app.player.x)**2+(bullet.y-app.player.y)**2)**0.5>100):
+                    newSet.append(bullet)
+        newList.append(newSet)
+    app.bullets = newList
+    app.hasBomb = False
+
+def polygonInBounds(app):
+    bf_x0, bf_y0, bf_x1, bf_y1 = 40, 40, app.width/1.3-40, app.height-40
+    bf_w, bf_h = bf_x1-bf_x0, bf_y1-bf_y0
+    newList = []
+    for sets in app.bullets:
+        newSet = []
+        for bullet in sets:
+            flag = False
+            for vertice in bullet.vertice:
+                if ((vertice.x<40 or vertice.y<40 or vertice.x>40+bf_w
+                or vertice.y>40+bf_h)):
+                    flag = True
+                elif(app.hasBomb):
+                    if(((vertice.x-app.player.x)**2+(vertice.y-app.player.y)**2)**0.5<app.player.r+30):
+                        flag = True
+            if(not flag):
                 newSet.append(bullet)
         newList.append(newSet)
     app.bullets = newList
+    app.hasBomb = False
 
-def polygonInBounds(app):
-    pass
+# Below are my collision functions.
+# thanks very much to Jeffery Thompson for sharing how he did it;
+# this helped me tremendously.
+# http://www.jeffreythompson.org/collision-detection/
 
+def lineCircleCollision_helper(x1, y1, x2, y2, cx, cy, r):
+    # Before we do anything else, the easiest thing we can do is to
+    # test if any of the two ends of the line are already inside 
+    # the circle.
+    if (((x1-cx)**2+(y1-cy)**2)**0.5 <= r or ((x2-cx)**2+(y2-cy)**2)**0.5 <= r):
+        return True
+    # If the above is not true, our second step is to get the closest 
+    # point on the line to our circle. First we get the length of the 
+    # line using pythag, and then use the dot product to find the closest point.
+    # https://en.wikipedia.org/wiki/Dot_product
+    length = (((x1-x2)**2)+((y1-y2)**2))**0.5
+    dotProduct=(((cx-x1)*(x2-x1))+((cy-y1)*(y2-y1)))/(length**2)
+    closestX = x1 + (dotProduct * (x2-x1))
+    closestY = y1 + (dotProduct * (y2-y1))
+    d1 = ((closestX-x1)**2+(closestY-y1)**2)**0.5
+    d2 = ((closestX-x2)**2+(closestY-y2)**2)**0.5
+    d1+d2>=length-0.1 and d1+d2<=length+0.1
+    # The dot product method actually assumes that our segment is a 
+    # line (that extends to infinity) and not a segment. So we 
+    # need to make sure that the point we found is actually on the segment itself. 
+    # If it isn't, we just return false because, well, the closest point is
+    # literally not on our segment :)
+    onLine = d1+d2>=length-0.1 and d1+d2<=length+0.1
+    if (not onLine):
+        return False
+    # At last, with pythag again, we calculate the distance from the 
+    # circle to the closest point on the line that we just calculated 
+    # with the dot product. If this distance is smaller than the radius,
+    # the line and the circle do meet.
+    distance = ((closestX-cx)**2+(closestY-cy)**2)**0.5
+    if (distance <= r):
+        return True
+    else:
+        return False
+    
 def circleCircleCollision(app):
     p = app.player
     for sets in app.bullets:
         for b in sets:
             if(((b.x-p.x)**2+(b.y-p.y)**2)**0.5<b.r+p.r):
-                app.gg = True
+                app.hasBomb = True
+                app.life-=1
 
 def polygonCircleCollision(app):
-    pass
-    # p = app.player
-    # nextVertice = 0
-    # vertice = 0
-    # for sets in app.bullets:
-    #     for b in sets:
-    #         if(isinstance(b, Polygon)):
-    #             vertice = len(b.vertice)
-    #         for current in range(vertice):
-    #             next = current+1;
-    #             if (next == vertice):
-    #                 next = 0
-    #             vc = b.
-    #             PVector vc = vertices[current];
-    #             PVector vn = vertices[next];
-
-    #             boolean collision = lineCircle(vc.x,vc.y, vn.x,vn.y, cx,cy,r);
-    #             if (collision) return true;
+    #  "To test if a circle has collided with a polygon, we can simplify
+    #  the problem to a series of line and circle collisions, one for each
+    #  side of the polygon." ----Jeffery Thompson
+    nextv = 0
+    vertice = 0
+    for sets in app.bullets:
+        for b in sets:
+            vertice = len(b.vertice)
+            for current in range(vertice):
+                nextv = current+1
+                # This goes through each vertice and the next one, also
+                # note how if this is the last vertice, the next vertice
+                # is set to the first vertice :)
+                if (nextv == vertice):
+                    nextv = 0
+                vc = b.vertice[current]
+                vn = b.vertice[nextv]
+                # This checks for collision between the circle
+                # and the line that can be created by connecting the 
+                # two vertices that we've previously selected
+                collision = lineCircleCollision_helper(vc.x,vc.y,vn.x,vn.y,app.player.x,app.player.y,app.player.r)
+                if(collision):
+                    app.hasBomb = True
+                    app.life-=1
 
 def polygonPolygonCollision(app):
     pass
+
     # pseudocode for tp1,
     # real code for tp2
 
 def timerFired(app):
+    if(app.life<=0):
+        app.gg = True
     if(not app.gg):
         app.time+=1
         if(app.init):
-            app.player = Player(app.width/2.6, app.height-60,7,0,3,5)
+            app.player = Player(app.width/2.6, app.height-60,7)
             app.init = False
         # circleInBounds(app)
         # circleCircleCollision(app)
+        polygonCircleCollision(app)
+        polygonInBounds(app)
         if(app.time==10):
+            # starfury(app)
             not_the_bees(app)
         # elif(app.time==20):
         #     starfury_double(app)
@@ -187,12 +261,11 @@ def starfury_double(app):
                 b.dx +=10
                 b.dy -=10
 
-def not_the_bees_help(app, sets, speed, color):
+def not_the_bees_help(app, sets, speed, color, no):
     bf_x0, bf_y0, bf_x1, bf_y1 = 40, 40, app.width/1.3-40, app.height-40
     bf_w, bf_h = bf_x1-bf_x0, bf_y1-bf_y0
     cx, cy, r= (bf_w)/2, (bf_h)/2, min(bf_w, bf_h)/3
     r *= 0.1
-    no = 10
     for i in range(no):
         gon = Polygon(color,[],0,0)
         angle = math.pi/2 - (2*math.pi)*(i/no)
@@ -214,10 +287,16 @@ def not_the_bees_help(app, sets, speed, color):
 def not_the_bees(app):
     hex1 = []
     app.bullets.append(hex1)
-    not_the_bees_help(app, hex1, 7, "orange")
+    not_the_bees_help(app, hex1, 10, "orange", 30)
     hex2 = []
     app.bullets.append(hex2)
-    not_the_bees_help(app, hex1, 10, "gold")
+    not_the_bees_help(app, hex2, 15, "gold", 25)
+    hex3 = []
+    app.bullets.append(hex3)
+    not_the_bees_help(app, hex3, 20, "khaki", 20)
+    hex4 = []
+    app.bullets.append(hex4)
+    not_the_bees_help(app, hex4, 25, "light yellow", 15)
 
 def redraw_background(app, canvas):
     canvas.create_image(200, 200, image=ImageTk.PhotoImage(app.bg))
@@ -233,7 +312,7 @@ def redraw_infoboard(app,canvas):
                             fill = "white") 
     canvas.create_text(ib_x0+30,ib_y0+20, text=f"Score = {app.score}",
                             font = "Ariel 20 bold", anchor = "w") 
-    if(app.bomb<=1):
+    if(app.bomb==1):
         canvas.create_text(ib_x0+30,ib_y0+50, text=f"You have {app.bomb} bomb left!",
                             font = "Ariel 20 bold", anchor = "w") 
     else:
