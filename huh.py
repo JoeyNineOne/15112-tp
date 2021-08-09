@@ -104,6 +104,22 @@ def polygonInBounds(app):
     app.bullets = newList
     app.hasBomb = False
 
+def bestRoute(app):
+    pass
+    # This will be my feature that tells the user where to go so
+    # they have a higher chance of surviving (a.k.a, not being
+    # hit by the bullets).
+
+    # Winning condition of the game: successfully survive all rounds of
+    # bullets.
+
+    # Pseudocode: modified BFS is our best choice given the winning condition above.
+    # We turn the map into grids, go from one cell to a neighboring one,
+    # check if one second later as well as two seconds later, if there will 
+    # be a bullet in that cell. If there won't be a bullet for the next two 
+    # consecutive seconds, that place is declared safe.
+
+
 # Below are my collision functions.
 # thanks very much to Jeffery Thompson for sharing how he did it;
 # this helped me tremendously.
@@ -180,9 +196,12 @@ def polygonCircleCollision(app):
 
 def polygonPolygonCollision(app):
     pass
-
-    # pseudocode for tp1,
-    # real code for tp2
+    # This function should be surprisingly straightforward
+    # since I've written so many different collisions already :).
+    # All we need to do for poly-poly is to see
+    # if any side of polygon A touches any sides of polygon B
+    # If I use the functions above as helper functions, I think
+    # it will be fairly easy for me to write this function.
 
 def timerFired(app):
     if(app.life<=0):
@@ -192,15 +211,15 @@ def timerFired(app):
         if(app.init):
             app.player = Player(app.width/2.6, app.height-60,7)
             app.init = False
-        # circleInBounds(app)
-        # circleCircleCollision(app)
-        polygonCircleCollision(app)
-        polygonInBounds(app)
+        circleInBounds(app)
+        circleCircleCollision(app)
+        # polygonCircleCollision(app)
+        # polygonInBounds(app)
         if(app.time==10):
-            # starfury(app)
-            not_the_bees(app)
-        # elif(app.time==20):
-        #     starfury_double(app)
+            starfury(app)
+            # not_the_bees(app)
+        elif(app.time==20):
+            starfury_double(app)
         for sets in app.bullets:
             for b in sets:
                 if(isinstance(b,Sphere)):
