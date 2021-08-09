@@ -24,21 +24,15 @@ class Sphere(Bullet):
         self.y = y
         self.r = r
 
-class Hexagon(Bullet):
-    def __init__(self, color, x0, y0, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, dx, dy):
+class Point():
+    def __init__(self,x,y):
+        self.x = x
+        self.y = y
+
+class Polygon(Bullet):
+    def __init__(self, color, vertice, dx, dy):
         super().__init__(color, dx, dy)
-        self.x0 = x0
-        self.y0 = y0
-        self.x1 = x1
-        self.y1 = y1
-        self.x2 = x2
-        self.y2 = y2
-        self.x3 = x3
-        self.y3 = y3
-        self.x4 = x4
-        self.y4 = y4
-        self.x5 = x5
-        self.y5 = y5
+        self.vertice = vertice
 
 def appStarted(app):
     app.width = 2560
@@ -97,8 +91,24 @@ def circleCircleCollision(app):
                 app.gg = True
 
 def polygonCircleCollision(app):
-    pass   
-    # will do today
+    pass
+    # p = app.player
+    # nextVertice = 0
+    # vertice = 0
+    # for sets in app.bullets:
+    #     for b in sets:
+    #         if(isinstance(b, Polygon)):
+    #             vertice = len(b.vertice)
+    #         for current in range(vertice):
+    #             next = current+1;
+    #             if (next == vertice):
+    #                 next = 0
+    #             vc = b.
+    #             PVector vc = vertices[current];
+    #             PVector vn = vertices[next];
+
+    #             boolean collision = lineCircle(vc.x,vc.y, vn.x,vn.y, cx,cy,r);
+    #             if (collision) return true;
 
 def polygonPolygonCollision(app):
     pass
@@ -111,10 +121,10 @@ def timerFired(app):
         if(app.init):
             app.player = Player(app.width/2.6, app.height-60,7,0,3,5)
             app.init = False
-        circleInBounds(app)
-        circleCircleCollision(app)
+        # circleInBounds(app)
+        # circleCircleCollision(app)
         if(app.time==10):
-            starfury(app)
+            not_the_bees(app)
         # elif(app.time==20):
         #     starfury_double(app)
         for sets in app.bullets:
@@ -122,19 +132,11 @@ def timerFired(app):
                 if(isinstance(b,Sphere)):
                     b.x+=b.dx
                     b.y+=b.dy
-                elif(isinstance(b,Hexagon)):
-                    b.x0+=b.dx
-                    b.y0+=b.dy
-                    b.x1+=b.dx
-                    b.y1+=b.dy
-                    b.x2+=b.dx
-                    b.y2+=b.dy
-                    b.x3+=b.dx
-                    b.y3+=b.dy
-                    b.x4+=b.dx
-                    b.y4+=b.dy
-                    b.x5+=b.dx
-                    b.y5+=b.dy
+                elif(isinstance(b,Polygon)):
+                    for point in b.vertice:
+                        point.x+=b.dx
+                        point.y+=b.dy
+
 
 def starfury_help(app, sets, speed, color):
     bf_x0, bf_y0, bf_x1, bf_y1 = 40, 40, app.width/1.3-40, app.height-40
@@ -191,9 +193,8 @@ def not_the_bees_help(app, sets, speed, color):
     cx, cy, r= (bf_w)/2, (bf_h)/2, min(bf_w, bf_h)/3
     r *= 0.1
     no = 10
-    hexa = Hexagon(color,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
     for i in range(no):
-        hexa = Hexagon(color,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+        gon = Polygon(color,[],0,0)
         angle = math.pi/2 - (2*math.pi)*(i/no)
         ox = cx + r * math.cos(angle)
         oy = cy + r * math.sin(angle)
@@ -204,17 +205,12 @@ def not_the_bees_help(app, sets, speed, color):
             angle = math.pi/2 - (2*math.pi)*(i/6)
             xx = cx + r * math.cos(angle)
             yy = cy + r * math.sin(angle)
-            if(i==0): hexa.x0, hexa.y0 = xx, yy
-            elif(i==1): hexa.x1, hexa.y1 = xx, yy
-            elif(i==2): hexa.x2, hexa.y2 = xx, yy
-            elif(i==3): hexa.x3, hexa.y3 = xx, yy
-            elif(i==4): hexa.x4, hexa.y4 = xx, yy
-            elif(i==5): hexa.x5, hexa.y5 = xx, yy
-        hexa.dx = dx
-        hexa.dy = dy
-        sets.append(hexa)
+            point = Point(xx,yy)
+            gon.vertice.append(point)
+        gon.dx = dx
+        gon.dy = dy
+        sets.append(gon)
     
-
 def not_the_bees(app):
     hex1 = []
     app.bullets.append(hex1)
@@ -266,8 +262,10 @@ def redraw_bullets(app,canvas):
             if(isinstance(b, Sphere)):
                 canvas.create_oval(b.x-b.r,b.y-b.r,b.x+b.r,b.y+b.r,
                                     fill = b.color)
-            elif(isinstance(b, Hexagon)):
-                canvas.create_polygon(b.x0,b.y0,b.x1,b.y1,b.x2,b.y2,b.x3,b.y3,b.x4,b.y4,b.x5,b.y5,
+            elif(isinstance(b, Polygon)):
+                if(len(b.vertice)==6):
+                    v = b.vertice
+                canvas.create_polygon(v[0].x,v[0].y,v[1].x,v[1].y,v[2].x,v[2].y,v[3].x,v[3].y,v[4].x,v[4].y,v[5].x,v[5].y,
                                     fill = b.color)
 def redrawAll(app, canvas):
     redraw_UI(app,canvas)
