@@ -1,10 +1,13 @@
 from cmu_112_graphics import *
 import math, time
 class Player():
-    def __init__(self, x, y, r):
+    def __init__(self, x, y, r, shape, cx, cy):
         self.x = x
         self.y = y
         self.r = r
+        self.shape = shape
+        self.cx = cx
+        self.cy = cy
 
 class Bullet():
     def __init__(self, color, dx, dy):
@@ -49,20 +52,29 @@ def appStarted(app):
     app.life = 5
     app.bomb = 3
     app.init = True
-    app.player = Player(0,0,0)
+    app.player = Player(0,0,0,Sphere("white",0,0,0,0,0),0,0)
     app.gg = False
     app.hasBomb = False
 
 def keyPressed(app, event):
     if(not app.gg):
+        print(app.player.cx,app.player.cy)
         if (event.key == 'Up'):
-            app.player.y -= 15
+            for i in range(len(app.player.shape.vertice)):
+                app.player.shape.vertice[i].y -= 15
+            app.player.cy -= 15
         elif (event.key == 'Down'): 
-            app.player.y += 15
+            for i in range(len(app.player.shape.vertice)):
+                app.player.shape.vertice[i].y += 15
+            app.player.cy += 15
         elif (event.key == 'Left'):
-            app.player.x -= 15
+            for i in range(len(app.player.shape.vertice)):
+                app.player.shape.vertice[i].x -= 15
+            app.player.cx -= 15
         elif (event.key == 'Right'):
-            app.player.x += 15
+            for i in range(len(app.player.shape.vertice)):
+                app.player.shape.vertice[i].x += 15
+            app.player.cx += 15
         elif(event.key =="r"):
             appStarted(app)
         elif(event.key=="f" and app.bomb>0):
@@ -81,7 +93,9 @@ def circleInBounds(app):
             and bullet.y<40+bf_h))):
                 if(not app.hasBomb):
                     newSet.append(bullet)
-                elif(app.hasBomb and ((bullet.x-app.player.x)**2+(bullet.y-app.player.y)**2)**0.5>100):
+                elif(isinstance(app.player.shape, Sphere) and app.hasBomb and ((bullet.x-app.player.x)**2+(bullet.y-app.player.y)**2)**0.5>100):
+                    newSet.append(bullet)
+                elif(isinstance(app.player.shape, Polygon) and app.hasBomb and ((bullet.x-app.player.cx)**2+(bullet.y-app.player.cy)**2)**0.5>100):
                     newSet.append(bullet)
         newList.append(newSet)
     app.bullets = newList
@@ -100,7 +114,9 @@ def polygonInBounds(app):
                 or vertice.y>40+bf_h)):
                     flag = True
                 elif(app.hasBomb):
-                    if(((vertice.x-app.player.x)**2+(vertice.y-app.player.y)**2)**0.5<app.player.r+30):
+                    if(isinstance(app.player.shape, Sphere) and ((vertice.x-app.player.x)**2+(vertice.y-app.player.y)**2)**0.5<app.player.r+30):
+                        flag = True
+                    elif(isinstance(app.player.shape, Polygon) and ((vertice.x-app.player.cx)**2+(vertice.y-app.player.cy)**2)**0.5<app.player.r+30):
                         flag = True
             if(not flag):
                 newSet.append(bullet)
@@ -132,6 +148,28 @@ def bestRoute(app):
 # thanks very much to Jeffery Thompson for sharing how he did it;
 # this helped me tremendously.
 # http://www.jeffreythompson.org/collision-detection/
+
+def lineLineCollision_helper(x1, y1, x2, y2, x3, y3, x4, y4):
+    uA = ((x4-x3)*(y1-y3)-(y4-y3)*(x1-x3))/((y4-y3)*(x2-x1)-(x4-x3)*(y2-y1))
+    uB = ((x2-x1)*(y1-y3)-(y2-y1)*(x1-x3))/((y4-y3)*(x2-x1)-(x4-x3)*(y2-y1))
+    if (uA >= 0 and uA <= 1 and uB >= 0 and uB <= 1):
+        return True
+    return False
+
+def linePolygonCollision_helper(v, x1, y1, x2, y2):
+    nextv = 0
+    vertice = len(v)
+    for current in range(vertice):
+        nextv = current+1
+        if (nextv == vertice):
+            nextv = 0
+        x3 = v[current].x
+        y3 = v[current].y
+        x4 = v[nextv].x
+        y4 = v[nextv].y
+        if(lineLineCollision_helper(x1, y1, x2, y2, x3, y3, x4, y4)):
+            return True
+    return False
 
 def lineCircleCollision_helper(x1, y1, x2, y2, cx, cy, r):
     # Before we do anything else, the easiest thing we can do is to
@@ -203,13 +241,21 @@ def polygonCircleCollision(app):
                     app.life-=1
 
 def polygonPolygonCollision(app):
-    pass
-    # This function should be surprisingly straightforward
-    # since I've written so many different collisions already :).
-    # All we need to do for poly-poly is to see
-    # if any side of polygon A touches any sides of polygon B
-    # If I use the functions above as helper functions, I think
-    # it will be fairly easy for me to write this function.
+    # ill annotate it this afternoon, its 8 am and i need to sleep hehe
+    nextv = 0
+    vertice = 0
+    for sets in app.bullets:
+        for b in sets:
+            vertice = len(b.vertice)
+            for current in range(vertice):
+                nextv = current+1;
+                if (nextv == vertice):
+                    nextv = 0
+                vc = b.vertice[current]
+                vn = b.vertice[nextv]
+                if(linePolygonCollision_helper(app.player.shape.vertice,vc.x,vc.y,vn.x,vn.y)):
+                    app.hasBomb = True
+                    app.life-=1
 
 def timerFired(app):
     if(app.life<=0):
@@ -217,11 +263,22 @@ def timerFired(app):
     if(not app.gg):
         app.time+=1
         if(app.init):
-            app.player = Player(app.width/2.6, app.height-60,7)
+            gon = Polygon("purple",[],0,0)
+            bf_x0, bf_y0, bf_x1, bf_y1 = 40, 40, app.width/1.3-40, app.height-40
+            bf_w, bf_h = bf_x1-bf_x0, bf_y1-bf_y0
+            cx, cy, r= (bf_w)/2, (bf_h)-40, 10
+            for i in range(4):
+                angle = math.pi/2 - (2*math.pi)*(i/4)
+                xx = cx + r * math.cos(angle)
+                yy = cy + r * math.sin(angle)
+                point = Point(xx,yy)
+                gon.vertice.append(point)
+            app.player = Player(app.width/2.6,app.height-60,10,gon, cx, cy)
             app.init = False
         # circleInBounds(app)
         # circleCircleCollision(app)
-        polygonCircleCollision(app)
+        # polygonCircleCollision(app)
+        polygonPolygonCollision(app)
         polygonInBounds(app)
         if(app.time==10):
             # starfury(app)
@@ -237,7 +294,6 @@ def timerFired(app):
                     for point in b.vertice:
                         point.x+=b.dx
                         point.y+=b.dy
-
 
 def starfury_help(app, sets, speed, color):
     bf_x0, bf_y0, bf_x1, bf_y1 = 40, 40, app.width/1.3-40, app.height-40
@@ -359,7 +415,13 @@ def redraw_UI(app, canvas):
     redraw_infoboard(app, canvas)
 def redraw_player(app, canvas):
     p = app.player
-    canvas.create_oval(p.x-p.r,p.y-p.r,p.x+p.r,p.y+p.r,fill="Purple",
+    if(isinstance(p.shape, Polygon)):
+        if(len(p.shape.vertice)==4):
+            v = p.shape.vertice
+            canvas.create_polygon(v[0].x,v[0].y,v[1].x,v[1].y,v[2].x,v[2].y,v[3].x,v[3].y,
+                                    fill = p.shape.color, outline = "white", width = 5)
+    else:
+        canvas.create_oval(p.x-p.r,p.y-p.r,p.x+p.r,p.y+p.r,fill="Purple",
                         outline = "white", width = 5)
 def redraw_bullets(app,canvas):
     for sets in app.bullets:
