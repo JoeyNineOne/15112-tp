@@ -1,5 +1,3 @@
-# This demos loadImage and scaleImage from a local file
-
 from cmu_112_graphics import *
 import math, time
 class Player():
@@ -34,7 +32,13 @@ class Polygon(Bullet):
 def appStarted(app):
     app.width = 2560
     app.height = 1600
+    # Image from:
+    # https://www.pexels.com/photo/scenic-view-of-mountains-during-dawn-1261728/
     app.bg = app.loadImage("bg1.png")
+    # Image from:
+    # https://cdn.mos.cms.futurecdn.net/KZjRDpe6uy9gB2jt7CgKWN.jpg
+    # I have cropped this image so it is a little different from its 
+    # original dimensions
     app.bf = app.loadImage("bf1.jpg")
     app.spellcard = "Starfury!"
     app.bullets = []
@@ -118,6 +122,10 @@ def bestRoute(app):
     # check if one second later as well as two seconds later, if there will 
     # be a bullet in that cell. If there won't be a bullet for the next two 
     # consecutive seconds, that place is declared safe.
+
+    # more distance = less weight on the graph.
+
+    # location of boss factored in
 
 
 # Below are my collision functions.
@@ -211,15 +219,15 @@ def timerFired(app):
         if(app.init):
             app.player = Player(app.width/2.6, app.height-60,7)
             app.init = False
-        circleInBounds(app)
-        circleCircleCollision(app)
-        # polygonCircleCollision(app)
-        # polygonInBounds(app)
+        # circleInBounds(app)
+        # circleCircleCollision(app)
+        polygonCircleCollision(app)
+        polygonInBounds(app)
         if(app.time==10):
-            starfury(app)
-            # not_the_bees(app)
-        elif(app.time==20):
-            starfury_double(app)
+            # starfury(app)
+            not_the_bees(app)
+        # elif(app.time==20):
+        #     starfury_double(app)
         for sets in app.bullets:
             for b in sets:
                 if(isinstance(b,Sphere)):
