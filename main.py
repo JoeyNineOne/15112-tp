@@ -1,9 +1,7 @@
 from cmu_112_graphics import *
 import math, time
 class Player():
-    def __init__(self, x, y, r, shape, cx, cy):
-        self.x = x
-        self.y = y
+    def __init__(self,r, shape, cx, cy):
         self.r = r
         self.shape = shape
         self.cx = cx
@@ -52,80 +50,175 @@ def appStarted(app):
     app.life = 5
     app.bomb = 3
     app.init = True
-    app.player = Player(0,0,0,Sphere("white",0,0,0,0,0),0,0)
+    app.player = Player(0,Sphere("white",0,0,0,0,0),0,0)
     app.gg = False
     app.hasBomb = False
+    app.help = True
+    app.grid = []
+    app.row = 20
+    app.col = 20
+    app.safe = -999,-999
 
 def keyPressed(app, event):
     if(not app.gg):
         print(app.player.cx,app.player.cy)
         if (event.key == 'Up'):
-            for i in range(len(app.player.shape.vertice)):
-                app.player.shape.vertice[i].y -= 15
+            if(isinstance(app.player.shape,Polygon)):
+                for i in range(len(app.player.shape.vertice)):
+                    app.player.shape.vertice[i].y -= 15
             app.player.cy -= 15
         elif (event.key == 'Down'): 
-            for i in range(len(app.player.shape.vertice)):
-                app.player.shape.vertice[i].y += 15
+            if(isinstance(app.player.shape,Polygon)):
+                for i in range(len(app.player.shape.vertice)):
+                    app.player.shape.vertice[i].y += 15
             app.player.cy += 15
         elif (event.key == 'Left'):
-            for i in range(len(app.player.shape.vertice)):
-                app.player.shape.vertice[i].x -= 15
+            if(isinstance(app.player.shape,Polygon)):
+                for i in range(len(app.player.shape.vertice)):
+                    app.player.shape.vertice[i].x -= 15
             app.player.cx -= 15
         elif (event.key == 'Right'):
-            for i in range(len(app.player.shape.vertice)):
-                app.player.shape.vertice[i].x += 15
+            if(isinstance(app.player.shape,Polygon)):
+                for i in range(len(app.player.shape.vertice)):
+                    app.player.shape.vertice[i].x += 15
             app.player.cx += 15
         elif(event.key =="r"):
             appStarted(app)
         elif(event.key=="f" and app.bomb>0):
             app.hasBomb = True
             app.bomb-=1
+        elif(event.key=="d"):
+            app.help = not app.help
 
-def circleInBounds(app):
+def circleInBounds(app,bullet):
     bf_x0, bf_y0, bf_x1, bf_y1 = 40, 40, app.width/1.3-40, app.height-40
     bf_w, bf_h = bf_x1-bf_x0, bf_y1-bf_y0
-    newList = []
-    for sets in app.bullets:
-        newSet = []
-        for bullet in sets:
-            ((bullet.x-app.player.x)**2+(bullet.y-app.player.y)**2)**0.5
-            if (((bullet.x>40 and bullet.y>40 and bullet.x<40+bf_w
-            and bullet.y<40+bf_h))):
-                if(not app.hasBomb):
-                    newSet.append(bullet)
-                elif(isinstance(app.player.shape, Sphere) and app.hasBomb and ((bullet.x-app.player.x)**2+(bullet.y-app.player.y)**2)**0.5>100):
-                    newSet.append(bullet)
-                elif(isinstance(app.player.shape, Polygon) and app.hasBomb and ((bullet.x-app.player.cx)**2+(bullet.y-app.player.cy)**2)**0.5>100):
-                    newSet.append(bullet)
-        newList.append(newSet)
-    app.bullets = newList
-    app.hasBomb = False
+    if (((bullet.x>40 and bullet.y>40 and bullet.x<40+bf_w
+    and bullet.y<40+bf_h))):
+        if(not app.hasBomb):
+            return True
+        elif(app.hasBomb and ((bullet.x-app.player.cx)**2+(bullet.y-app.player.cy)**2)**0.5>app.player.r+30):
+            app.hasBomb = False
+            return True
+        return False
+    return False
 
-def polygonInBounds(app):
+def polygonInBounds(app,bullet):
     bf_x0, bf_y0, bf_x1, bf_y1 = 40, 40, app.width/1.3-40, app.height-40
     bf_w, bf_h = bf_x1-bf_x0, bf_y1-bf_y0
-    newList = []
-    for sets in app.bullets:
-        newSet = []
-        for bullet in sets:
-            flag = False
-            for vertice in bullet.vertice:
-                if ((vertice.x<40 or vertice.y<40 or vertice.x>40+bf_w
-                or vertice.y>40+bf_h)):
-                    flag = True
-                elif(app.hasBomb):
-                    if(isinstance(app.player.shape, Sphere) and ((vertice.x-app.player.x)**2+(vertice.y-app.player.y)**2)**0.5<app.player.r+30):
-                        flag = True
-                    elif(isinstance(app.player.shape, Polygon) and ((vertice.x-app.player.cx)**2+(vertice.y-app.player.cy)**2)**0.5<app.player.r+30):
-                        flag = True
-            if(not flag):
-                newSet.append(bullet)
-        newList.append(newSet)
-    app.bullets = newList
-    app.hasBomb = False
+    for vertice in bullet.vertice:
+        if ((vertice.x<40 or vertice.y<40 or vertice.x>40+bf_w
+        or vertice.y>40+bf_h)):
+            return False
+        elif(not app.hasBomb):
+            return True
+        elif(app.hasBomb):
+            if(((vertice.x-app.player.cx)**2+(vertice.y-app.player.cy)**2)**0.5<app.player.r+30):
+                app.hasBomb = False
+                return True
+            else:
+                print("hi!")
+                app.hasBomb = False
+                return False
+
+def getCell(app, x, y):
+    # modified from the function here:
+    # https://www.cs.cmu.edu/~112/notes/notes-animations-part2.html
+    bf_x0, bf_y0, bf_x1, bf_y1 = 40, 40, app.width/1.3-40, app.height-40
+    bf_w, bf_h = bf_x1-bf_x0, bf_y1-bf_y0
+    cellWidth = bf_w / app.col
+    cellHeight = bf_h / app.row
+    # Note: we have to use int() here and not just // because
+    # row and col cannot be floats and if any of x, y, app.margin,
+    # cellWidth or cellHeight are floats, // would still produce floats.
+    row = int((y - bf_y0) / cellHeight)
+    col = int((x - bf_x0) / cellWidth)
+
+    return (row, col)
+
+def getCellBounds(app, row, col):
+    # modified from the function here:
+    # https://www.cs.cmu.edu/~112/notes/notes-animations-part2.html
+    bf_x0, bf_y0, bf_x1, bf_y1 = 40, 40, app.width/1.3-40, app.height-40
+    bf_w, bf_h = bf_x1-bf_x0, bf_y1-bf_y0
+    cellWidth = bf_w / app.col
+    cellHeight = bf_h / app.row
+    x0 = bf_x0 + col * cellWidth
+    x1 = bf_x0 + (col+1) * cellWidth
+    y0 = bf_y0 + row * cellHeight
+    y1 = bf_y0 + (row+1) * cellHeight
+    return (x0, y0, x1, y1)
 
 def bestRoute(app):
-    pass
+    simulation = copy.deepcopy(app.bullets)
+    grid = []
+    for i in range(app.row):
+        grid += [[0]*app.col]
+    # grid add pattern from 0th second
+    addToGrid(app, simulation, grid)
+    # 0th second -> 1st second
+    increaseTime(app, simulation)
+    # grid add pattern from 1th second
+    addToGrid(app, simulation, grid)
+    # 1st bfs
+    startx, starty = getCell(app,app.player.cx,app.player.cy)
+    bfs(app, grid, startx, starty)
+
+def increaseTime(app, simulation):
+    for sets in simulation:
+        for b in sets:
+            if(isinstance(b,Sphere)):
+                b.x+=3*b.dx
+                b.y+=3*b.dy
+            elif(isinstance(b,Polygon)):
+                for point in b.vertice:
+                    point.x+=3*b.dx
+                    point.y+=3*b.dy
+
+def bfs(app, grid, startx, starty):
+    q = []
+    vis = [[ False for i in range(app.col)] for i in range(app.row)]
+    dRow = [ -1, 0, 1, 0]
+    dCol = [ 0, 1, 0, -1]
+    # Mark the starting cell as visited
+    # and push it into the queue
+    q.append((startx,starty))
+    vis[startx][starty] = True
+    # Iterate while the queue
+    # is not empty
+    while (len(q) > 0):
+        x,y = q.pop(0)
+        print()
+        print(grid[x][y], end = " ")
+        # Go to the adjacent cells
+        for i in range(4):
+            adjx = x + dRow[i]
+            adjy = y + dCol[i]
+            if (isValid(app, vis, adjx, adjy, grid)):
+                app.safe = (adjx,adjy)
+                return
+
+def addToGrid(app, simulation, grid):
+    for i in range(app.row):
+        for j in range(app.col):
+            x0, y0, x1, y1 = getCellBounds(app,i,j)
+            for sets in simulation:
+                for b in sets:
+                    if(isinstance(b,Sphere)):
+                        if(x0<b.x and b.x<x1 and y0<b.y and b.y<y1):
+                            grid[i][j] += 1
+def isValid(app, vis, row, col, grid):
+    # If cell lies out of bounds
+    if (row < 0 or col < 0 or row >= app.row or col >= app.col):
+        return False
+    # If cell is already visited
+    if(vis[row][col]):
+        return False
+    if(grid[row][col]!=0):
+        return False
+    return True
+
+
     # This will be my feature that tells the user where to go so
     # they have a higher chance of surviving (a.k.a, not being
     # hit by the bullets).
@@ -210,9 +303,10 @@ def circleCircleCollision(app):
     p = app.player
     for sets in app.bullets:
         for b in sets:
-            if(((b.x-p.x)**2+(b.y-p.y)**2)**0.5<b.r+p.r):
-                app.hasBomb = True
-                app.life-=1
+            if(isinstance(app.player.shape,Sphere) and isinstance(b,Sphere)):
+                if(((b.x-p.cx)**2+(b.y-p.cy)**2)**0.5<b.r+p.r):
+                    app.hasBomb = True
+                    app.life-=1
 
 def polygonCircleCollision(app):
     #  "To test if a circle has collided with a polygon, we can simplify
@@ -222,23 +316,42 @@ def polygonCircleCollision(app):
     vertice = 0
     for sets in app.bullets:
         for b in sets:
-            vertice = len(b.vertice)
-            for current in range(vertice):
-                nextv = current+1
-                # This goes through each vertice and the next one, also
-                # note how if this is the last vertice, the next vertice
-                # is set to the first vertice :)
-                if (nextv == vertice):
-                    nextv = 0
-                vc = b.vertice[current]
-                vn = b.vertice[nextv]
-                # This checks for collision between the circle
-                # and the line that can be created by connecting the 
-                # two vertices that we've previously selected
-                collision = lineCircleCollision_helper(vc.x,vc.y,vn.x,vn.y,app.player.x,app.player.y,app.player.r)
-                if(collision):
-                    app.hasBomb = True
-                    app.life-=1
+            if(isinstance(app.player.shape,Sphere) and isinstance(b,Polygon)):
+                vertice = len(b.vertice)
+                for current in range(vertice):
+                    nextv = current+1
+                    # This goes through each vertice and the next one, also
+                    # note how if this is the last vertice, the next vertice
+                    # is set to the first vertice :)
+                    if (nextv == vertice):
+                        nextv = 0
+                    vc = b.vertice[current]
+                    vn = b.vertice[nextv]
+                    # This checks for collision between the circle
+                    # and the line that can be created by connecting the 
+                    # two vertices that we've previously selected
+                    collision = lineCircleCollision_helper(vc.x,vc.y,vn.x,vn.y,app.player.cx,app.player.cy,app.player.r)
+                    if(collision):
+                        app.hasBomb = True
+                        app.life-=1
+            elif((isinstance(app.player.shape,Polygon) and isinstance(b,Sphere))):
+                vertice = len(app.player.shape.vertice)
+                for current in range(vertice):
+                    nextv = current+1
+                    # This goes through each vertice and the next one, also
+                    # note how if this is the last vertice, the next vertice
+                    # is set to the first vertice :)
+                    if (nextv == vertice):
+                        nextv = 0
+                    vc = app.player.shape.vertice[current]
+                    vn = app.player.shape.vertice[nextv]
+                    # This checks for collision between the circle
+                    # and the line that can be created by connecting the 
+                    # two vertices that we've previously selected
+                    collision = lineCircleCollision_helper(vc.x,vc.y,vn.x,vn.y,b.x,b.y,b.r)
+                    if(collision):
+                        app.hasBomb = True
+                        app.life-=1
 
 def polygonPolygonCollision(app):
     # ill annotate it this afternoon, its 8 am and i need to sleep hehe
@@ -246,16 +359,44 @@ def polygonPolygonCollision(app):
     vertice = 0
     for sets in app.bullets:
         for b in sets:
-            vertice = len(b.vertice)
-            for current in range(vertice):
-                nextv = current+1;
-                if (nextv == vertice):
-                    nextv = 0
-                vc = b.vertice[current]
-                vn = b.vertice[nextv]
-                if(linePolygonCollision_helper(app.player.shape.vertice,vc.x,vc.y,vn.x,vn.y)):
-                    app.hasBomb = True
-                    app.life-=1
+            if(isinstance(b,Polygon) and isinstance(app.player.shape,Polygon)):
+                vertice = len(b.vertice)
+                for current in range(vertice):
+                    nextv = current+1
+                    if (nextv == vertice):
+                        nextv = 0
+                    vc = b.vertice[current]
+                    vn = b.vertice[nextv]
+                    if(linePolygonCollision_helper(app.player.shape.vertice,vc.x,vc.y,vn.x,vn.y)):
+                        app.hasBomb = True
+                        app.life-=1
+
+def collisionDetection(app):
+    if(isinstance(app.player.shape, Sphere)):
+        circleCircleCollision(app)
+    else:
+        polygonPolygonCollision(app)
+    polygonCircleCollision(app)
+
+def inBoundsCheck(app):
+    newList = []
+    for sets in app.bullets:
+        newSet = []
+        for b in sets:
+            if(isinstance(b,Sphere)):
+                if (circleInBounds(app, b)):
+                    newSet.append(b)
+            else:
+                if(polygonInBounds(app,b)):
+                    newSet.append(b)
+        newList.append(newSet)
+    app.bullets = newList
+
+def nextStepHelp(app):
+    row,col = getCell(app, app.player.cx, app.player.cy)
+    safex, safey = app.safe
+    if(row == safex and col == safey):
+        bestRoute(app)
 
 def timerFired(app):
     if(app.life<=0):
@@ -263,28 +404,39 @@ def timerFired(app):
     if(not app.gg):
         app.time+=1
         if(app.init):
-            gon = Polygon("purple",[],0,0)
             bf_x0, bf_y0, bf_x1, bf_y1 = 40, 40, app.width/1.3-40, app.height-40
             bf_w, bf_h = bf_x1-bf_x0, bf_y1-bf_y0
             cx, cy, r= (bf_w)/2, (bf_h)-40, 10
-            for i in range(4):
-                angle = math.pi/2 - (2*math.pi)*(i/4)
-                xx = cx + r * math.cos(angle)
-                yy = cy + r * math.sin(angle)
-                point = Point(xx,yy)
-                gon.vertice.append(point)
-            app.player = Player(app.width/2.6,app.height-60,10,gon, cx, cy)
-            app.init = False
-        # circleInBounds(app)
-        # circleCircleCollision(app)
-        # polygonCircleCollision(app)
-        polygonPolygonCollision(app)
-        polygonInBounds(app)
+            shapeChoice = app.getUserInput('What do you wanna be? 0 for circle, 3 for triangle, and so on')
+            if(shapeChoice == "0"):
+                gon = Sphere("purple",app.width/2.6,app.height-60,0,0,10)
+                app.player = Player(10,gon,cx,cy)
+                app.init = False
+            elif(shapeChoice.isnumeric() and int(shapeChoice)>=3 and int(shapeChoice)<=10):
+                shapeChoice = int(shapeChoice)
+                gon = Polygon("purple",[],0,0)
+                # the code below wastaken from here and then modified:
+                # https://www.cs.cmu.edu/~112/notes/notes-graphics.html#circlesWithTrig
+                for i in range(shapeChoice):
+                    angle = math.pi/2 - (2*math.pi)*(i/shapeChoice)
+                    xx = cx + r * math.cos(angle)
+                    yy = cy + r * math.sin(angle)
+                    point = Point(xx,yy)
+                    gon.vertice.append(point)
+                app.player = Player(10,gon, cx, cy)
+                app.init = False
+            else:
+                shapeChoice = app.getUserInput("That's not really valid, sorry. Can you type again?")
+        collisionDetection(app)
+        inBoundsCheck(app)
         if(app.time==10):
-            # starfury(app)
-            not_the_bees(app)
-        # elif(app.time==20):
-        #     starfury_double(app)
+            starfury(app)
+            # not_the_bees(app)
+        elif(app.time==20):
+            starfury_double(app)
+        elif(app.time==25):
+            bestRoute(app)
+        nextStepHelp(app)
         for sets in app.bullets:
             for b in sets:
                 if(isinstance(b,Sphere)):
@@ -300,7 +452,9 @@ def starfury_help(app, sets, speed, color):
     bf_w, bf_h = bf_x1-bf_x0, bf_y1-bf_y0
     cx, cy, r= (bf_w)/2, (bf_h)/2, min(bf_w, bf_h)/3
     r *= 0.1
-    no = 50
+    no = 10
+    # the code below was taken from here and then modified:
+    # https://www.cs.cmu.edu/~112/notes/notes-graphics.html#circlesWithTrig
     for i in range(no):
         angle = math.pi/2 - (2*math.pi)*(i/no)
         x = cx + r * math.cos(angle)
@@ -348,6 +502,8 @@ def not_the_bees_help(app, sets, speed, color, no):
     bf_x0, bf_y0, bf_x1, bf_y1 = 40, 40, app.width/1.3-40, app.height-40
     bf_w, bf_h = bf_x1-bf_x0, bf_y1-bf_y0
     cx, cy, r= (bf_w)/2, (bf_h)/2, min(bf_w, bf_h)/3
+    # the code below was taken from here and then modified:
+    # https://www.cs.cmu.edu/~112/notes/notes-graphics.html#circlesWithTrig
     r *= 0.1
     for i in range(no):
         gon = Polygon(color,[],0,0)
@@ -416,12 +572,34 @@ def redraw_UI(app, canvas):
 def redraw_player(app, canvas):
     p = app.player
     if(isinstance(p.shape, Polygon)):
-        if(len(p.shape.vertice)==4):
-            v = p.shape.vertice
+        v = p.shape.vertice
+        if(len(v)==3):
+            canvas.create_polygon(v[0].x,v[0].y,v[1].x,v[1].y,v[2].x,v[2].y,
+                                    fill = p.shape.color, outline = "white", width = 5)
+        elif(len(v)==4):
             canvas.create_polygon(v[0].x,v[0].y,v[1].x,v[1].y,v[2].x,v[2].y,v[3].x,v[3].y,
                                     fill = p.shape.color, outline = "white", width = 5)
+        elif(len(v)==5):
+            canvas.create_polygon(v[0].x,v[0].y,v[1].x,v[1].y,v[2].x,v[2].y,v[3].x,v[3].y,v[4].x,v[4].y,
+                                    fill = p.shape.color, outline = "white", width = 5)
+        elif(len(v)==6):
+            canvas.create_polygon(v[0].x,v[0].y,v[1].x,v[1].y,v[2].x,v[2].y,v[3].x,v[3].y,v[4].x,v[4].y,v[5].x,v[5].y,
+                                    fill = p.shape.color, outline = "white", width = 5)
+        elif(len(v)==7):
+            canvas.create_polygon(v[0].x,v[0].y,v[1].x,v[1].y,v[2].x,v[2].y,v[3].x,v[3].y,v[4].x,v[4].y,v[5].x,v[5].y,v[6].x,v[6].y,
+                                    fill = p.shape.color, outline = "white", width = 5)
+        elif(len(v)==8):
+            canvas.create_polygon(v[0].x,v[0].y,v[1].x,v[1].y,v[2].x,v[2].y,v[3].x,v[3].y,v[4].x,v[4].y,v[5].x,v[5].y,v[6].x,v[6].y,v[7].x,v[7].y,
+                                    fill = p.shape.color, outline = "white", width = 5)
+        elif(len(v)==9):
+            canvas.create_polygon(v[0].x,v[0].y,v[1].x,v[1].y,v[2].x,v[2].y,v[3].x,v[3].y,v[4].x,v[4].y,v[5].x,v[5].y,v[6].x,v[6].y,v[7].x,v[7].y,v[8].x,v[8].y,
+                                    fill = p.shape.color, outline = "white", width = 5)
+        elif(len(v)==10):
+            canvas.create_polygon(v[0].x,v[0].y,v[1].x,v[1].y,v[2].x,v[2].y,v[3].x,v[3].y,v[4].x,v[4].y,v[5].x,v[5].y,v[6].x,v[6].y,v[7].x,v[7].y,v[8].x,v[8].y,v[9].x,v[9].y,
+                                    fill = p.shape.color, outline = "white", width = 5)
+        
     else:
-        canvas.create_oval(p.x-p.r,p.y-p.r,p.x+p.r,p.y+p.r,fill="Purple",
+        canvas.create_oval(p.cx-p.r,p.cy-p.r,p.cx+p.r,p.cy+p.r,fill="Purple",
                         outline = "white", width = 5)
 def redraw_bullets(app,canvas):
     for sets in app.bullets:
@@ -435,10 +613,21 @@ def redraw_bullets(app,canvas):
                     v = b.vertice
                 canvas.create_polygon(v[0].x,v[0].y,v[1].x,v[1].y,v[2].x,v[2].y,v[3].x,v[3].y,v[4].x,v[4].y,v[5].x,v[5].y,
                                     fill = b.color)
+
+def redraw_grid(app,canvas):
+    for i in range(app.row):
+        for j in range(app.col):
+            x0, y0, x1, y1 = getCellBounds(app, i, j)
+            canvas.create_rectangle(x0,y0,x1,y1,outline = "white")
+            safex, safey = app.safe
+            if(i==safex and j==safey):
+                canvas.create_rectangle(x0,y0,x1,y1,fill = "red", outline = "white")
+
 def redrawAll(app, canvas):
     redraw_UI(app,canvas)
+    if(app.help):
+        redraw_grid(app,canvas)
     redraw_bullets(app,canvas)
     redraw_player(app,canvas)
-
 
 runApp(width=2560, height=1600)
