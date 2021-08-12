@@ -33,14 +33,16 @@ class Polygon(Bullet):
 def appStarted(app):
     app.width = 2560
     app.height = 1600
-    # Image from:
-    # https://www.pexels.com/photo/scenic-view-of-mountains-during-dawn-1261728/
+    # I drew this background myself hehe, no citing needed
     app.bg = app.loadImage("bg1.png")
     # Image from:
     # https://cdn.mos.cms.futurecdn.net/KZjRDpe6uy9gB2jt7CgKWN.jpg
     # I have cropped this image so it is a little different from its 
     # original dimensions
     app.bf = app.loadImage("bf1.jpg")
+    # I drew her myself hehe, no citing needed
+    app.k = app.loadImage("kaleido.jpeg")
+    app.kaleido = app.scaleImage(app.k, 7/15)
     app.spellcard = "Starfury!"
     app.bullets = []
     app.working = False
@@ -53,15 +55,21 @@ def appStarted(app):
     app.player = Player(0,Sphere("white",0,0,0,0,0),0,0)
     app.gg = False
     app.hasBomb = False
-    app.help = True
+    app.help = False
     app.grid = []
     app.row = 20
     app.col = 20
     app.safe = -999,-999
+    app.startscreen = True
+    app.directions = False
+    app.countdown = 0
+    app.endtime = 0
+    app.ready = False
+    app.currwave = 1
+    app.rest = False
 
 def keyPressed(app, event):
     if(not app.gg):
-        print(app.player.cx,app.player.cy)
         if (event.key == 'Up'):
             if(isinstance(app.player.shape,Polygon)):
                 for i in range(len(app.player.shape.vertice)):
@@ -84,23 +92,27 @@ def keyPressed(app, event):
             app.player.cx += 15
         elif(event.key =="r"):
             appStarted(app)
-        elif(event.key=="f" and app.bomb>0):
-            app.hasBomb = True
-            app.bomb-=1
+        # elif(event.key=="f" and app.bomb>0):
+            # pass
+            # app.hasBomb = True
+            # app.bomb-=1
+            # bomb(app)
         elif(event.key=="d"):
             app.help = not app.help
+        elif(event.key=="Space" and app.startscreen):
+            app.directions = True
+            app.startscreen = False
+        elif(event.key=="Space" and app.directions):
+            app.directions = False
+        elif(event.key=="Space" and app.rest and not app.ready):
+            app.ready = True
 
 def circleInBounds(app,bullet):
     bf_x0, bf_y0, bf_x1, bf_y1 = 40, 40, app.width/1.3-40, app.height-40
     bf_w, bf_h = bf_x1-bf_x0, bf_y1-bf_y0
     if (((bullet.x>40 and bullet.y>40 and bullet.x<40+bf_w
     and bullet.y<40+bf_h))):
-        if(not app.hasBomb):
-            return True
-        elif(app.hasBomb and ((bullet.x-app.player.cx)**2+(bullet.y-app.player.cy)**2)**0.5>app.player.r+30):
-            app.hasBomb = False
-            return True
-        return False
+        return True
     return False
 
 def polygonInBounds(app,bullet):
@@ -110,16 +122,7 @@ def polygonInBounds(app,bullet):
         if ((vertice.x<40 or vertice.y<40 or vertice.x>40+bf_w
         or vertice.y>40+bf_h)):
             return False
-        elif(not app.hasBomb):
-            return True
-        elif(app.hasBomb):
-            if(((vertice.x-app.player.cx)**2+(vertice.y-app.player.cy)**2)**0.5<app.player.r+30):
-                app.hasBomb = False
-                return True
-            else:
-                print("hi!")
-                app.hasBomb = False
-                return False
+    return True
 
 def getCell(app, x, y):
     # modified from the function here:
@@ -207,6 +210,11 @@ def addToGrid(app, simulation, grid):
                     if(isinstance(b,Sphere)):
                         if(x0<b.x and b.x<x1 and y0<b.y and b.y<y1):
                             grid[i][j] += 1
+                    # else:
+                    #     for v in b.vertice:
+                    #         if(x0<b.x and b.x<x1 and y0<b.y and b.y<y1):
+                    #             grid[i][j] += 1
+                                
 def isValid(app, vis, row, col, grid):
     # If cell lies out of bounds
     if (row < 0 or col < 0 or row >= app.row or col >= app.col):
@@ -217,25 +225,6 @@ def isValid(app, vis, row, col, grid):
     if(grid[row][col]!=0):
         return False
     return True
-
-
-    # This will be my feature that tells the user where to go so
-    # they have a higher chance of surviving (a.k.a, not being
-    # hit by the bullets).
-
-    # Winning condition of the game: successfully survive all rounds of
-    # bullets.
-
-    # Pseudocode: modified BFS is our best choice given the winning condition above.
-    # We turn the map into grids, go from one cell to a neighboring one,
-    # check if one second later as well as two seconds later, if there will 
-    # be a bullet in that cell. If there won't be a bullet for the next two 
-    # consecutive seconds, that place is declared safe.
-
-    # more distance = less weight on the graph.
-
-    # location of boss factored in
-
 
 # Below are my collision functions.
 # thanks very much to Jeffery Thompson for sharing how he did it;
@@ -305,7 +294,6 @@ def circleCircleCollision(app):
         for b in sets:
             if(isinstance(app.player.shape,Sphere) and isinstance(b,Sphere)):
                 if(((b.x-p.cx)**2+(b.y-p.cy)**2)**0.5<b.r+p.r):
-                    app.hasBomb = True
                     app.life-=1
 
 def polygonCircleCollision(app):
@@ -332,7 +320,6 @@ def polygonCircleCollision(app):
                     # two vertices that we've previously selected
                     collision = lineCircleCollision_helper(vc.x,vc.y,vn.x,vn.y,app.player.cx,app.player.cy,app.player.r)
                     if(collision):
-                        app.hasBomb = True
                         app.life-=1
             elif((isinstance(app.player.shape,Polygon) and isinstance(b,Sphere))):
                 vertice = len(app.player.shape.vertice)
@@ -350,7 +337,6 @@ def polygonCircleCollision(app):
                     # two vertices that we've previously selected
                     collision = lineCircleCollision_helper(vc.x,vc.y,vn.x,vn.y,b.x,b.y,b.r)
                     if(collision):
-                        app.hasBomb = True
                         app.life-=1
 
 def polygonPolygonCollision(app):
@@ -368,7 +354,6 @@ def polygonPolygonCollision(app):
                     vc = b.vertice[current]
                     vn = b.vertice[nextv]
                     if(linePolygonCollision_helper(app.player.shape.vertice,vc.x,vc.y,vn.x,vn.y)):
-                        app.hasBomb = True
                         app.life-=1
 
 def collisionDetection(app):
@@ -402,57 +387,67 @@ def timerFired(app):
     if(app.life<=0):
         app.gg = True
     if(not app.gg):
-        app.time+=1
-        if(app.init):
-            bf_x0, bf_y0, bf_x1, bf_y1 = 40, 40, app.width/1.3-40, app.height-40
-            bf_w, bf_h = bf_x1-bf_x0, bf_y1-bf_y0
-            cx, cy, r= (bf_w)/2, (bf_h)-40, 10
-            shapeChoice = app.getUserInput('What do you wanna be? 0 for circle, 3 for triangle, and so on')
-            if(shapeChoice == "0"):
-                gon = Sphere("purple",app.width/2.6,app.height-60,0,0,10)
-                app.player = Player(10,gon,cx,cy)
-                app.init = False
-            elif(shapeChoice.isnumeric() and int(shapeChoice)>=3 and int(shapeChoice)<=10):
-                shapeChoice = int(shapeChoice)
-                gon = Polygon("purple",[],0,0)
-                # the code below wastaken from here and then modified:
-                # https://www.cs.cmu.edu/~112/notes/notes-graphics.html#circlesWithTrig
-                for i in range(shapeChoice):
-                    angle = math.pi/2 - (2*math.pi)*(i/shapeChoice)
-                    xx = cx + r * math.cos(angle)
-                    yy = cy + r * math.sin(angle)
-                    point = Point(xx,yy)
-                    gon.vertice.append(point)
-                app.player = Player(10,gon, cx, cy)
-                app.init = False
-            else:
-                shapeChoice = app.getUserInput("That's not really valid, sorry. Can you type again?")
-        collisionDetection(app)
-        inBoundsCheck(app)
-        if(app.time==10):
-            starfury(app)
-            # not_the_bees(app)
-        elif(app.time==20):
-            starfury_double(app)
-        elif(app.time==25):
-            bestRoute(app)
-        nextStepHelp(app)
-        for sets in app.bullets:
-            for b in sets:
-                if(isinstance(b,Sphere)):
-                    b.x+=b.dx
-                    b.y+=b.dy
-                elif(isinstance(b,Polygon)):
-                    for point in b.vertice:
-                        point.x+=b.dx
-                        point.y+=b.dy
+        if(not app.startscreen and not app.directions):
+            if(app.init):
+                bf_x0, bf_y0, bf_x1, bf_y1 = 40, 40, app.width/1.3-40, app.height-40
+                bf_w, bf_h = bf_x1-bf_x0, bf_y1-bf_y0
+                cx, cy, r= (bf_w)/2, (bf_h)-40, 10
+                shapeChoice = app.getUserInput('What shape should Kaleido take on? 0 for circle, 3 for triangle, 4 for square, etc. Inputs up to 10 allowed')
+                while(not (shapeChoice=="0" or shapeChoice=="3" or shapeChoice=="4" or shapeChoice=="5" or shapeChoice=="6" or shapeChoice=="7" or shapeChoice=="8" or shapeChoice=="9" or shapeChoice=="10")):
+                    shapeChoice = app.getUserInput("That's not a valid number for a shape, sorry. Can you type again? (0 and 3~10 accepted)")
+                if(shapeChoice == "0"):
+                    gon = Sphere("purple",app.width/2.6,app.height-60,0,0,10)
+                    app.player = Player(10,gon,cx,cy)
+                    app.init = False
+                elif(shapeChoice.isnumeric() and int(shapeChoice)>=3 and int(shapeChoice)<=10):
+                    shapeChoice = int(shapeChoice)
+                    gon = Polygon("purple",[],0,0)
+                    # the code below wastaken from here and then modified:
+                    # https://www.cs.cmu.edu/~112/notes/notes-graphics.html#circlesWithTrig
+                    for i in range(shapeChoice):
+                        angle = math.pi/2 - (2*math.pi)*(i/shapeChoice)
+                        xx = cx + r * math.cos(angle)
+                        yy = cy + r * math.sin(angle)
+                        point = Point(xx,yy)
+                        gon.vertice.append(point)
+                    app.player = Player(10,gon, cx, cy)
+                    app.init = False
+            collisionDetection(app)
+            inBoundsCheck(app)
+            app.time+=1
+            if(app.time==2):
+                starfury(app)
+                app.countdown = 100
+            elif(app.time==20):
+                starfury_double(app)
+            elif(app.time==40):
+                starfury(app)
+            elif(app.time==60):
+                starfury_double(app)
+            elif(app.time==100):
+                app.rest = True
+                while(not app.ready):
+                    pass
+                app.currwave+=1
+                app.rest = False
+                app.bullets = []
+            nextStepHelp(app)
+            for sets in app.bullets:
+                for b in sets:
+                    if(isinstance(b,Sphere)):
+                        b.x+=b.dx
+                        b.y+=b.dy
+                    elif(isinstance(b,Polygon)):
+                        for point in b.vertice:
+                            point.x+=b.dx
+                            point.y+=b.dy
 
 def starfury_help(app, sets, speed, color):
     bf_x0, bf_y0, bf_x1, bf_y1 = 40, 40, app.width/1.3-40, app.height-40
     bf_w, bf_h = bf_x1-bf_x0, bf_y1-bf_y0
     cx, cy, r= (bf_w)/2, (bf_h)/2, min(bf_w, bf_h)/3
     r *= 0.1
-    no = 10
+    no = 15
     # the code below was taken from here and then modified:
     # https://www.cs.cmu.edu/~112/notes/notes-graphics.html#circlesWithTrig
     for i in range(no):
@@ -538,7 +533,7 @@ def not_the_bees(app):
     not_the_bees_help(app, hex4, 25, "light yellow", 15)
 
 def redraw_background(app, canvas):
-    canvas.create_image(200, 200, image=ImageTk.PhotoImage(app.bg))
+    canvas.create_image(app.width/2, app.height/2, image=ImageTk.PhotoImage(app.bg))
 
 def redraw_battlefield(app, canvas):
     bf_x0, bf_y0, bf_x1, bf_y1 = 40, 40, app.width/1.3-40, app.height-40
@@ -548,22 +543,18 @@ def redraw_battlefield(app, canvas):
 def redraw_infoboard(app,canvas):
     ib_x0, ib_y0, ib_x1, ib_y1 = app.width/1.3, 40, app.width-40, app.height/3+40
     canvas.create_rectangle(ib_x0,ib_y0,ib_x1,ib_y1,
-                            fill = "white") 
-    canvas.create_text(ib_x0+30,ib_y0+20, text=f"Score = {app.score}",
-                            font = "Ariel 20 bold", anchor = "w") 
-    if(app.bomb==1):
-        canvas.create_text(ib_x0+30,ib_y0+50, text=f"You have {app.bomb} bomb left!",
-                            font = "Ariel 20 bold", anchor = "w") 
-    else:
-        canvas.create_text(ib_x0+30,ib_y0+50, text=f"You have {app.bomb} bombs left!",
-                            font = "Ariel 20 bold", anchor = "w") 
-    canvas.create_text(ib_x0+30,ib_y0+80, text=f"Life = {app.life}",
-                            font = "Ariel 20 bold", anchor = "w") 
-    canvas.create_text(ib_x0+30,ib_y0+110, text=f"Current Spellcard: {app.spellcard}",
-                            font = "Ariel 20 bold", anchor = "w") 
-    if(app.gg):
-        canvas.create_text(ib_x0+30,ib_y0+130, text=f"GAME OVER!!! :P",
-                            font = "Ariel 20 bold", anchor = "w") 
+                            fill = "black") 
+    canvas.create_text(ib_x0+30,ib_y0+30, text=f"Nebula dust left: {app.bomb}",
+                            font = "Ariel 20 bold", fill="white",anchor = "w") 
+    canvas.create_text(ib_x0+30,ib_y0+50, text=f"Lives left: {app.life}",
+                            font = "Ariel 20 bold", fill="white",anchor = "w") 
+    canvas.create_text(ib_x0+30,ib_y0+70, text=f"Countdown: {app.countdown-app.time}",
+                            font = "Ariel 20 bold", fill="white",anchor = "w") 
+def redraw_gg(app,canvas):
+    canvas.create_rectangle(0,app.height/2-40,app.width,app.height/2+40,
+                            fill = "black") 
+    canvas.create_text(app.width/2, app.height/2, text=f"Kaleido's Cape has run out of power! Sorry, but you need to press spacebar and restart :(",
+                            font = "Ariel 20 bold", fill="white") 
 
 def redraw_UI(app, canvas):
     redraw_background(app, canvas)
@@ -623,11 +614,80 @@ def redraw_grid(app,canvas):
             if(i==safex and j==safey):
                 canvas.create_rectangle(x0,y0,x1,y1,fill = "red", outline = "white")
 
+def redraw_startscreen(app, canvas):
+    canvas.create_rectangle(0,0,app.width,app.height,fill = "black")
+    canvas.create_image(400, 400, image=ImageTk.PhotoImage(app.kaleido))
+    canvas.create_text(app.width-300,100,text="Kaleido's SKY", font="Ariel 50 bold", fill="white")
+    story = """\
+    Kaleido is the girl right in front of you. She has always 
+    been a dreamer of some sort, dreaming about the shapes and 
+    colors of the stars and the universe.
+
+    "I want to see the stars, and be able to feel their power!"
+
+    With that, she wears her flying cape, and goes on a stargazing
+    journey. However, the cosmos is no safe place. While the stars
+    are pretty, they are also dangerous if touched!! On this
+    mesmerizing journey, Kaleido has to avoid touching the stars,
+    or they will absorb her cape's magic, and you don't want to know
+    what happens next... Good luck, my friend!
+    """
+    canvas.create_text(app.width-280,300,text=story, font="Ariel 17", fill="white")
+    canvas.create_text(app.width-300,600,text="[Press the spacebar to continue]", font="Ariel 30", fill="white")
+
+def redraw_directions(app, canvas):
+    redraw_background(app,canvas)
+    canvas.create_rectangle(200,70,app.width-200,app.height-70,fill = "black")
+    directions = """\
+    Surviving:
+    To survive, simply avoid all the stars until the countdown on the right side of the 
+    screen go down to zero. By then, that wave is "cleared", and the next wave will start.
+    There will be rewards after you clear each wave!
+
+    When you touch a star, you will lose a life, and when all lives are lost, your cape
+    loses power, and you will need to start over. You start out with 5 lifes, but you 
+    will be rewarded with more at the end of some waves.
+
+    Moving:
+    To move, simply press the arrowkeys on your keyboard, and you will move in that direction.
+
+    Bottles of Nebula dust:
+    If the stars get too dense, and you sense danger, feel free to use some nebula dust by pressing "f".
+    By using a bottle of nebula dust, you clear the stars that are close around you.
+    You start out with 5 bottles of them (so be sure to use them at the right time), but you 
+    will be rewarded with more at the end of some waves. When you lose a life, a bottle will be 
+    used automatically, but this bottle is free, so it won't deduct anything from your bottle count.
+
+    Kaleido's Wonderful Kaleidoscope:
+    Kaleido has a wonderful kaleidoscope; appearently it works with a magic spell called "BFS",
+    though no one really knows what that stands for. When you look through the kaleidoscope, 
+    it lights up the nearest safe spot for you to go to. After you arrive at that spot, it lights
+    up the next safest spot for you, and so on. Watch through the kaleidoscope by pressing "d"
+
+    Alright! You are all set. Press spacebar again to continue, and have fun!
+    """
+    canvas.create_text(app.width/2,app.height/2,text=directions, font="Ariel 20", fill="white")
+
+def redraw_ready(app, canvas):
+    canvas.create_rectangle(0,app.height/2-40,app.width,app.height/2+40,
+                            fill = "black") 
+    canvas.create_text(app.width/2, app.height/2, text=f"Wave {app.currwave} cleared!! Press spacebar to continue",
+                            font = "Ariel 20 bold", fill="white") 
+
 def redrawAll(app, canvas):
-    redraw_UI(app,canvas)
-    if(app.help):
-        redraw_grid(app,canvas)
-    redraw_bullets(app,canvas)
-    redraw_player(app,canvas)
+    if(app.startscreen):
+        redraw_startscreen(app, canvas)
+    elif(app.directions):
+        redraw_directions(app, canvas)
+    elif(app.gg):
+        redraw_gg(app,canvas)
+    else:
+        redraw_UI(app,canvas)
+        if(app.help):
+            redraw_grid(app,canvas)
+        if(app.rest and not app.ready):
+            redraw_ready(app,canvas)
+        redraw_bullets(app,canvas)
+        redraw_player(app,canvas)
 
 runApp(width=2560, height=1600)
