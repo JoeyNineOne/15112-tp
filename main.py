@@ -240,6 +240,8 @@ def increaseTime(app, simulation):
                     point.y+=3*b.dy
 
 def bfs(app, grid, startx, starty):
+    # The code below was taken and modified from:
+    # https://www.geeksforgeeks.org/breadth-first-traversal-bfs-on-a-2d-array/
     q = []
     vis = [[ False for i in range(app.col)] for i in range(app.row)]
     dRow = [ -1, 0, 1, 0]
