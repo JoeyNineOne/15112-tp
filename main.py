@@ -37,7 +37,10 @@ class Polygon(Bullet):
 def appStarted(app):
     app.width = 2560
     app.height = 1600
-    # I drew this background myself hehe, no citing needed
+    # I drew this background myself, no citing needed.
+    # I know it might be hard to believe, but the APP "Procreate"
+    # has some amazing brushes that do allow me to create cool
+    # patterns like the ones in this just in a few brushes.
     app.bg = app.loadImage("bg1.png")
     # Image from:
     # https://cdn.mos.cms.futurecdn.net/KZjRDpe6uy9gB2jt7CgKWN.jpg
@@ -277,6 +280,8 @@ def addToGrid(app, simulation, grid):
                                 grid[i][j] += 1
                                 
 def isValid(app, vis, row, col, grid):
+    # The code below was also taken and modified from:
+    # https://www.geeksforgeeks.org/breadth-first-traversal-bfs-on-a-2d-array/
     # If cell lies out of bounds
     if (row < 0 or col < 0 or row >= app.row or col >= app.col):
         return False
@@ -293,6 +298,8 @@ def isValid(app, vis, row, col, grid):
 # http://www.jeffreythompson.org/collision-detection/
 
 def lineLineCollision_helper(x1, y1, x2, y2, x3, y3, x4, y4):
+    # The code in this function was taken and modified from:
+    # http://www.jeffreythompson.org/collision-detection/line-line.php
     if(((y4-y3)*(x2-x1)-(x4-x3)*(y2-y1)==0)):
         return False
     uA = ((x4-x3)*(y1-y3)-(y4-y3)*(x1-x3))/((y4-y3)*(x2-x1)-(x4-x3)*(y2-y1))
@@ -302,6 +309,8 @@ def lineLineCollision_helper(x1, y1, x2, y2, x3, y3, x4, y4):
     return False
 
 def linePolygonCollision_helper(v, x1, y1, x2, y2):
+    # The code in this function was taken and modified from:
+    # http://www.jeffreythompson.org/collision-detection/poly-line.php
     nextv = 0
     vertice = len(v)
     for current in range(vertice):
@@ -317,6 +326,8 @@ def linePolygonCollision_helper(v, x1, y1, x2, y2):
     return False
 
 def lineCircleCollision_helper(x1, y1, x2, y2, cx, cy, r):
+    # The code in this function was taken and modified from:
+    # http://www.jeffreythompson.org/collision-detection/line-circle.php
     # Before we do anything else, the easiest thing we can do is to
     # test if any of the two ends of the line are already inside 
     # the circle.
@@ -354,6 +365,8 @@ def lineCircleCollision_helper(x1, y1, x2, y2, cx, cy, r):
         return False
     
 def circleCircleCollision(app):
+    # The code in this function was taken and modified from:
+    # http://www.jeffreythompson.org/collision-detection/circle-circle.php
     p = app.player
     for sets in app.bullets:
         for b in sets:
@@ -363,6 +376,8 @@ def circleCircleCollision(app):
                     app.life-=1
 
 def polygonCircleCollision(app):
+    # The code in this function was taken and modified from:
+    # http://www.jeffreythompson.org/collision-detection/poly-circle.php
     #  "To test if a circle has collided with a polygon, we can simplify
     #  the problem to a series of line and circle collisions, one for each
     #  side of the polygon." ----Jeffery Thompson
@@ -408,6 +423,8 @@ def polygonCircleCollision(app):
                         app.life-=1
                         
 def polygonPolygonCollision(app):
+    # The code in this function was taken and modified from:
+    # http://www.jeffreythompson.org/collision-detection/poly-poly.php
     nextv = 0
     vertice = 0
     for sets in app.bullets:
