@@ -53,8 +53,8 @@ def appStarted(app):
 def variablesInit(app):
     app.bullets = []
     app.time = 0
-    app.life = 1000
-    app.bomb = 1000
+    app.life = 30
+    app.bomb = 5
     app.init = True
     app.player = Player(0,Sphere("white",0,0,0,0,0),0,0)
     app.gg = False
@@ -291,6 +291,8 @@ def isValid(app, vis, row, col, grid):
 # http://www.jeffreythompson.org/collision-detection/
 
 def lineLineCollision_helper(x1, y1, x2, y2, x3, y3, x4, y4):
+    if(((y4-y3)*(x2-x1)-(x4-x3)*(y2-y1)==0)):
+        return False
     uA = ((x4-x3)*(y1-y3)-(y4-y3)*(x1-x3))/((y4-y3)*(x2-x1)-(x4-x3)*(y2-y1))
     uB = ((x2-x1)*(y1-y3)-(y2-y1)*(x1-x3))/((y4-y3)*(x2-x1)-(x4-x3)*(y2-y1))
     if (uA >= 0 and uA <= 1 and uB >= 0 and uB <= 1):
@@ -323,6 +325,8 @@ def lineCircleCollision_helper(x1, y1, x2, y2, cx, cy, r):
     # line using pythag, and then use the dot product to find the closest point.
     # https://en.wikipedia.org/wiki/Dot_product
     length = (((x1-x2)**2)+((y1-y2)**2))**0.5
+    if(length**2==0):
+        return False
     dotProduct=(((cx-x1)*(x2-x1))+((cy-y1)*(y2-y1)))/(length**2)
     closestX = x1 + (dotProduct * (x2-x1))
     closestY = y1 + (dotProduct * (y2-y1))
@@ -402,7 +406,6 @@ def polygonCircleCollision(app):
                         app.life-=1
                         
 def polygonPolygonCollision(app):
-    # ill annotate it this afternoon, its 8 am and i need to sleep hehe
     nextv = 0
     vertice = 0
     for sets in app.bullets:
@@ -625,7 +628,7 @@ def gravityWall_help(app, sets, speed, color, dire):
     cx, cy, r= (bf_w)/2, (bf_h)/2, min(bf_w, bf_h)/3
     # the code below was taken from here and then modified:
     # https://www.cs.cmu.edu/~112/notes/notes-graphics.html#circlesWithTrig
-    no = 30
+    no = 35
     if(dire == 1):
         for i in range(no):
             gon = Polygon(color,[],0,0)
